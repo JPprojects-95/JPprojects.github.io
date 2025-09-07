@@ -1,5 +1,11 @@
 Some implementations of the Monte Carlo method for option pricing:
 
+
+  -American options via the Longstaff-Schwarz algorithm:
+  
+      -Pricing of Call options (same price as European, no benefit from early exercise due to convexity)
+      -Auxiliary file for checking almost orthogonality of Hermite basis when empirical distribution.
+
   -European option via discretization of the GBM SDE:
   
       -Computation of option price
