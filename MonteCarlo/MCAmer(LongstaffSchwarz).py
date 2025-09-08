@@ -56,7 +56,7 @@ def EulerGBM(S0, T, r, sigma, n, N):
     return S #Price and BM arrays
 
 
-'''Exact discretization of GBM'''
+'''Exact discretization of GBM: in case we want to compare'''
 
 
 def ExactGBM(S0,T,r,sigma,n,N):
@@ -178,25 +178,97 @@ def Snell_envelope(S0, T, r, sigma, n,K, N, Nbasis):
 
 
 
+
+
+def OptimalStopping(S0, T, r, sigma, n,K, N, Nbasis):
+
+    
+    dt=T/n
+
+
+    Z=np.zeros((n+1,N))
+    
+    S=ExactGBM(S0, T, r, sigma, n, N)
+    
+    Y=np.zeros((n+1,N))
+
+
+    logS = np.log(S)                           # shape (n+1, N)
+    mu = np.mean(logS, axis=1, keepdims=True)  # keeps mu as 2-dim array so we can define Y as below 
+    sd = np.std(logS, axis=1, keepdims=True)   # keeps mu as 2-dim array so we can define Y as below 
+
+    Y[1:, :] = (logS[1:, :] - mu[1:, :]) / sd[1:, :]   #The variable Y is normally distributed N(0,1) so Hermite basis
+    Y[0, :] = 0.0
+
+    
+    Z=payoff(S,K)    # Initialize the envelope to consist just on the value of the payoff
+
+
+
+          #Here we compute the optimal strategy (backward induction, we only care about optimal strategy starting at zero, i.e. tau[0])
+
+    tau=np.zeros((n+1,N))
+
+    tau[n]=n
+
+    for t in range (n-1,0,-1):
+
+        tau[t]=np.where( ( Z[t]>CE (np.exp(-r * dt)* Z[t+1], Y[t], N, Nbasis) ), t, tau[t+1] )
+
+
+    tau[0]=np.where(Z[0]>np.exp(-r * dt)* np.mean(Z[1]),0,tau[1])
+
+
+
+        #here we compute the optimally stopped process
+
+    tau_int = tau.astype(int)
+
+    Zopt=np.exp(-r*tau_int[0]*dt)*Z[tau_int[0]]
+
+    return tau[0],Zopt
+
+    
+
+
+
+
+
+
 #SIMULATION PARAMETERS: one has to be very careful between relations n,N,Nbasis
 
 S0 = 100.0
 T = 1
 r = 0.05
-sigma = 0.2
-n = 2000
-N = 1000000
+sigma = 0.02
+n = 20
+N = 10000
 Nbasis=5
 
 
-K=100   #Strike price 
+K=99   #Strike price
+
+
+
+        
+
+
     
 
 
 ZSnell=Snell_envelope(S0, T, r,sigma,n,K, N,Nbasis)
 
+Optimaltime=OptimalStopping(S0, T, r, sigma, n,K, N, Nbasis)[0]
 
-print(ZSnell[0,0])
+Price=np.mean(OptimalStopping(S0, T, r, sigma, n,K, N, Nbasis)[1])
+
+
+
+print('Checks for Call payoffs: See if optimal time is n and price agrees with European')
+print('The exact BS value for European Call with these parameters',5.83)
+print('Computed price Americal Call', Price)
+print('Optimal stopping',np.mean(Optimaltime))
+
 
 
 
